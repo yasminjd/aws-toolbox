@@ -1,27 +1,38 @@
-# Intent Prediction Comparison Using AWS Bedrock
+# AWS Intent Classifier with Bedrock
 
 ## Description
-This project aims to **compare the intent predictions** made by **NLU models** with predictions from **AWS Bedrock**, a **Large Language Model (LLM)**. The project involves providing a set of **intents** and their associated **example utterances** to AWS Bedrock and evaluating its ability to correctly predict the intent for a new, unseen utterance.
+This project compares the predictions of an **NLU model** (used by **Amelia**, a conversation AI tool) with those made by **AWS Bedrock**, a **Large Language Model (LLM)**, for intent classification. The Lambda function is invoked each time a new **user utterance** is added to **Amelia**, and the code processes the utterance to classify its intent using AWS Bedrock.
 
-### Key Objective:
-- **Comparison of Predictions**: We compare the **intent classification** results from an **NLU model** (used by Amelia, a conversation AI tool) with those predicted by **AWS Bedrock**.
-- **Intent Prediction with Bedrock**: This part of the project sends **intents and example utterances** to **AWS Bedrock** for each new **user utterance** added to **Amelia**, and checks how accurately Bedrock can classify the intent.
+### Key Functionality:
+1. **Loading Intents from S3**:
+   - The project retrieves a list of **intents** and **example utterances** from a CSV file stored in **AWS S3**. The **intents** are used to compare how both the **NLU model** and **AWS Bedrock** predict the intent for a new user utterance.
   
-The function is triggered each time a new user utterance is added to **Amelia**, which is an **NLU-based conversation AI tool**. The goal is to analyze how **AWS Bedrock** performs in intent classification compared to the existing NLU predictions.
+2. **Generating a Prompt**:
+   - The **Lambda function** generates a structured **prompt** that includes the intents and example utterances. This prompt is then sent to **AWS Bedrock** for classification.
 
-### How It Works:
-1. **NLU Model (Amelia)** receives user input (an utterance).
-2. The system **sends intent examples** (with their labels) to **AWS Bedrock** to classify the intent of the user’s utterance.
-3. **Comparison of Results**: The predicted intent from **Bedrock** is compared with the **NLU model’s prediction** to evaluate how well Bedrock performs in classifying intents.
+3. **Sending to AWS Bedrock**:
+   - The prompt containing intents and a new user utterance is sent to **AWS Bedrock** via the `invoke_model` API.
+   - AWS Bedrock generates a response, and the system extracts the predicted intent from Bedrock’s output.
 
-### Main Components:
-- **AWS Lambda**: The function that processes incoming user utterances, sends them to AWS Bedrock for prediction, and returns the result.
-- **AWS Bedrock**: The LLM used for generating intent predictions based on provided examples.
-- **Amelia (NLU)**: The existing **NLU-based conversation AI tool** that provides the initial intent classification for comparison.
-- **S3 Bucket**: Stores the CSV file with **intent names** and **example utterances**.
+4. **Handling Incoming Utterances**:
+   - The Lambda function is invoked every time a new **utterance** is received. It processes the utterance, generates the prompt, and compares **AWS Bedrock’s** prediction with the **NLU model’s** prediction.
+
+### Workflow:
+1. **Amelia (NLU-based AI tool)** adds a new user **utterance**.
+2. The **Lambda function** is triggered by the new utterance.
+3. The **Lambda function** loads the **intents** from an **S3 CSV file**.
+4. A structured **prompt** is created and sent to **AWS Bedrock**.
+5. **Bedrock’s prediction** is returned and compared to the existing **NLU model’s prediction**.
+6. The predicted **intent** is returned.
+
+### Key Services Used:
+- **AWS Lambda**: For processing the request and invoking the model.
+- **AWS Bedrock**: For generating predictions from the LLM.
+- **AWS S3**: For storing intents and their corresponding example utterances.
 
 ## Environment Variables:
-- **`AWS_BEDROCK_MODEL_ID`**: Model ID for the Bedrock LLM used for intent classification.
-- **`S3_BUCKET_NAME`**: The name of the S3 bucket where the intent examples (CSV) are stored.
-- **`S3_CSV_KEY`**: Path to the CSV file containing the intents and examples.
-  
+The following environment variables must be set in AWS Lambda for the function to work:
+- **`AWS_BEDROCK_MODEL_ID`**: The ID of the Bedrock model to use for intent classification.
+- **`S3_BUCKET_NAME`**: The name of the S3 bucket where the CSV file containing intents is stored.
+- **`S3_CSV_KEY`**: The path to the CSV file containing intents and example utterances.
+
