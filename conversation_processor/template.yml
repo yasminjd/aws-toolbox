@@ -1,0 +1,115 @@
+# This AWS SAM template has been generated from your function's configuration. If
+# your function has one or more triggers, note that the AWS resources associated
+# with these triggers aren't fully specified in this template and include
+# placeholder values. Open this template in AWS Infrastructure Composer or your
+# favorite IDE and modify it to specify a serverless application with other AWS
+# resources.
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: An AWS Serverless Application Model template describing your function.
+Resources:
+  conversationprocessor:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./src
+      Description: ''
+      MemorySize: 2048
+      Timeout: 603
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.9
+      Architectures:
+        - x86_64
+      EphemeralStorage:
+        Size: 5120
+      Environment:
+        Variables:
+          REDSHIFT_DB: dev
+          REDSHIFT_WORKGROUP_NAME: redshift-serverless-workgroup
+          S3_BUCKET_NAME: conversation-exports
+          S3_FILE_KEY: example1.csv
+      EventInvokeConfig:
+        MaximumEventAgeInSeconds: 21600
+        MaximumRetryAttempts: 2
+      Layers:
+        - arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python39:28
+      PackageType: Zip
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - redshift-data:ExecuteStatement
+                - redshift-data:BatchExecuteStatement
+                - redshift-data:GetStatementResult
+              Resource: '*'
+            - Action:
+                - redshift:*
+                - redshift-serverless:*
+                - ec2:DescribeAccountAttributes
+                - ec2:DescribeAddresses
+                - ec2:DescribeAvailabilityZones
+                - ec2:DescribeSecurityGroups
+                - ec2:DescribeSubnets
+                - ec2:DescribeVpcs
+                - ec2:DescribeInternetGateways
+                - sns:CreateTopic
+                - sns:Get*
+                - sns:List*
+                - cloudwatch:Describe*
+                - cloudwatch:Get*
+                - cloudwatch:List*
+                - cloudwatch:PutMetricAlarm
+                - cloudwatch:EnableAlarmActions
+                - cloudwatch:DisableAlarmActions
+                - tag:GetResources
+                - tag:UntagResources
+                - tag:GetTagValues
+                - tag:GetTagKeys
+                - tag:TagResources
+              Effect: Allow
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - iam:CreateServiceLinkedRole
+              Resource: >-
+                arn:aws:iam::*:role/aws-service-role/redshift.amazonaws.com/AWSServiceRoleForRedshift
+              Condition:
+                StringLike:
+                  iam:AWSServiceName: redshift.amazonaws.com
+            - Sid: DataAPIPermissions
+              Action:
+                - redshift-data:ExecuteStatement
+                - redshift-data:CancelStatement
+                - redshift-data:ListStatements
+                - redshift-data:GetStatementResult
+                - redshift-data:DescribeStatement
+                - redshift-data:ListDatabases
+                - redshift-data:ListSchemas
+                - redshift-data:ListTables
+                - redshift-data:DescribeTable
+              Effect: Allow
+              Resource: '*'
+            - Sid: SecretsManagerListPermissions
+              Action:
+                - secretsmanager:ListSecrets
+              Effect: Allow
+              Resource: '*'
+            - Sid: SecretsManagerCreateGetPermissions
+              Action:
+                - secretsmanager:CreateSecret
+                - secretsmanager:GetSecretValue
+                - secretsmanager:TagResource
+              Effect: Allow
+              Resource: '*'
+              Condition:
+                StringLike:
+                  secretsmanager:ResourceTag/RedshiftDataFullAccess: '*'
+            - Effect: Allow
+              Action:
+                - s3:*
+                - s3-object-lambda:*
+              Resource: '*'
+      RecursiveLoop: Terminate
+      SnapStart:
+        ApplyOn: None
+      RuntimeManagementConfig:
+        UpdateRuntimeOn: Auto
