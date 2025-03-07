@@ -3,42 +3,40 @@ import os
 import boto3
 import csv
 from io import StringIO
-import re
 
 # AWS Clients
 s3_client = boto3.client("s3")
 bedrock_runtime = boto3.client("bedrock-runtime")
 
-# Environment Variables (Set these in AWS Lambda)
+# Environment Variables
 AWS_BEDROCK_MODEL_ID = os.getenv("AWS_BEDROCK_MODEL_ID")  
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")  
 S3_CSV_KEY = os.getenv("S3_CSV_KEY")  # Example: "intents/intents.csv"
 
-def load_intents_from_s3():
+def load_intents_from_s3(selected_intents):
     """
-    Loads intents and example utterances from a CSV file stored in S3.
+    Loads only the specified intents and their example utterances from S3.
     """
     if not S3_BUCKET_NAME or not S3_CSV_KEY:
         print("Error: S3_BUCKET_NAME or S3_CSV_KEY is missing.")
         return None  
 
     try:
-        # Fetch CSV file from S3
         response = s3_client.get_object(Bucket=S3_BUCKET_NAME, Key=S3_CSV_KEY)
         csv_content = response["Body"].read().decode("utf-8")
 
-        # Read CSV content
         reader = csv.reader(StringIO(csv_content))
         intents_dict = {}
 
         for row in reader:
             if len(row) < 2:
                 continue  # Skip invalid rows
-            
+
             intent, utterance = row[0].strip(), row[1].strip()
-            if intent not in intents_dict:
-                intents_dict[intent] = []
-            intents_dict[intent].append(utterance)
+            if intent in selected_intents:  # Load only the specified intents
+                if intent not in intents_dict:
+                    intents_dict[intent] = []
+                intents_dict[intent].append(utterance)
 
         return intents_dict
 
@@ -49,13 +47,13 @@ def load_intents_from_s3():
     except Exception as e:
         print(f"Error loading intents from S3: {e}")
         return None  
+
 def generate_prompt(utterance, intents_dict):
     """
-    Generates a structured prompt using basic Python string operations.
+    Generates a structured prompt using the 10 provided intents.
     """
-
     prompt = "I am going to give you a list of labels (intents). Each label has two example utterances.\n\n"
-    
+
     for intent, examples in intents_dict.items():
         prompt += f"{intent}:\n"
         prompt += f"Example one: \"{examples[0]}\"\n"
@@ -94,11 +92,8 @@ def send_to_bedrock(prompt):
 
         if "results" in response_body and len(response_body["results"]) > 0:
             raw_output = response_body["results"][0].get("outputText", "Error: No response from model.")
-
-            # Remove unwanted characters (e.g., '\n' and "utterance ==")
             cleaned_output = raw_output.strip().replace("utterance ==", "").strip()
-
-            return cleaned_output  # Should return only "age_limit"
+            return cleaned_output
 
         else:
             return "Error: Bedrock response format incorrect."
@@ -107,23 +102,20 @@ def send_to_bedrock(prompt):
         print(f"Error in Bedrock processing: {str(e)}")
         return f"Error: {str(e)}"
 
-    except Exception as e:
-        print(f"Error in Bedrock processing: {str(e)}")
-        return "Bedrock fallback: Unable to process request."
-
 def lambda_handler(event, context):
     """
-    AWS Lambda entry point. Loads intents from S3, generates a prompt, and processes it through AWS Bedrock.
+    AWS Lambda entry point. Loads only the relevant intents from S3, generates a prompt, and processes it through AWS Bedrock.
     """
     try:
         body = json.loads(event.get("body", "{}"))
         utterance = body.get("utterance")
+        top_10_intents = body.get("intents")  # Expecting this from request body
 
-        if not utterance:
-            return {"statusCode": 400, "body": json.dumps({"message": "Utterance is required"})}
+        if not utterance or not top_10_intents:
+            return {"statusCode": 400, "body": json.dumps({"message": "Utterance and top_10_intents are required"})}
 
-        # Load intents dynamically from S3
-        intents_dict = load_intents_from_s3()
+        # Load only the specified 10 intents from S3
+        intents_dict = load_intents_from_s3(selected_intents=top_10_intents)
         if not intents_dict:
             return {"statusCode": 500, "body": json.dumps({"message": "Failed to load intents from S3"})}
 
